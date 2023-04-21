@@ -6,12 +6,13 @@ import pickle as pkl
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
+from torchvision.utils import save_image
 
 
 AFFORDANCE_COLOR_CODES = {
     "sit" : [220, 0, 115],
     "run" : [0, 100, 100],
-    "grasp" : [155, 50, 70],
+    "grasp" : [15, 50, 70],
 }
 
 class ADE20kAffordanceDataset(Dataset):
@@ -65,8 +66,6 @@ class ADE20kAffordanceDataset(Dataset):
         
         with Image.open(seg_file_name) as io:
             seg = np.array(io)
-        with Image.open(img_file_name) as io:
-            img = io
         obj_ids = seg[:,:,2]
         affordance_seg = np.zeros_like(seg)
         for obj in sit_ids:
@@ -75,10 +74,21 @@ class ADE20kAffordanceDataset(Dataset):
             affordance_seg[obj_ids == obj] = AFFORDANCE_COLOR_CODES['grasp']
         
         affordance_seg = Image.fromarray(affordance_seg)
-        target = self.transform_target(img)
+        target = self.transform_target(Image.open(img_file_name))
         target = target/127.5 - 1
         source = self.transform_source(affordance_seg)
         source = source/255.0
         
         return dict(jpg = target, hint = source)
-        
+
+
+if __name__ == '__main__':
+    data_dir = '/proj'
+    dataset = ADE20kAffordanceDataset(data_dir)
+    print(len(dataset))
+    for i in range(10):
+        data = dataset[i]
+        jpg = data['jpg']
+        hint = data['hint']
+        print(jpg.shape, hint.shape)
+        save_image([jpg, hint], 'test{}.png'.format(i))
