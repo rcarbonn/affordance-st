@@ -31,6 +31,17 @@ class ADE20kAffordanceDataset(Dataset):
         with open(self.affordance_train_file_path, 'r') as f:
             self.affordance_train_paths = json.load(f)
         
+        print("Loading captions...")
+        self.prompt_train_file_path = os.path.join(self.prompt_path, 'ade20k_train_captions.jsonl')
+        with open(self.prompt_train_file_path, 'r') as f:
+            self.prompt_list = list(f)
+
+        self.prompt_dict = {}
+        for json_str in self.prompt_list:
+            j = json.loads(json_str)
+            self.prompt_dict[j["image_id"]] = j["caption"]
+        print("Done.")
+        
         self.transform_source = transforms.Compose([
             transforms.Resize((512, 512)),
             transforms.PILToTensor()
@@ -48,6 +59,8 @@ class ADE20kAffordanceDataset(Dataset):
         img_file_name = os.path.join(self.data_dir, '{}/{}'.format(self.index_ade20k['folder'][i], self.index_ade20k['filename'][i]))
         seg_file_name = img_file_name.replace('.jpg', '_seg.png')
         relationship_file = os.path.join(self.affordance_path, self.affordance_train_paths[idx] + '_relationship.txt')
+        prompt_id = "ADE_train_{0:08d}".format(i+1)
+        print(prompt_id)
 
         run_ids = []
         sit_ids = []
@@ -78,8 +91,9 @@ class ADE20kAffordanceDataset(Dataset):
         target = target/127.5 - 1
         source = self.transform_source(affordance_seg)
         source = source/255.0
+        prompt = self.prompt_dict[prompt_id]
         
-        return dict(jpg = target, hint = source)
+        return dict(jpg = target, txt = prompt,  hint = source)
 
 
 if __name__ == '__main__':
@@ -90,5 +104,6 @@ if __name__ == '__main__':
         data = dataset[i]
         jpg = data['jpg']
         hint = data['hint']
-        print(jpg.shape, hint.shape)
+        txt = data['txt']
+        print(txt)
         save_image([jpg, hint], 'test{}.png'.format(i))
